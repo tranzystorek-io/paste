@@ -77,15 +77,68 @@ body.invert #nav a:hover {
 </style>
 <script src="lzma.js"></script>
 <script src="lib/codemirror.js"></script>
+<script src="lib/jquery-3.4.1.min.js"></script>
+<script src="lib/contextMenu.min.js"></script>
 <link rel="stylesheet" href="lib/codemirror.css">
 <link rel="stylesheet" href="theme/darcula.css">
 <link rel="stylesheet" href="theme/midnight.css">
 <link rel="stylesheet" href="theme/night.css">
+<link rel="stylesheet" href="theme/base16-light.css">
+<link rel="stylesheet" href="lib/contextMenu.min.css">
 <script src="mode/clike/clike.js"></script>
+<script src="mode/javascript/javascript.js"></script>
 <script>
 var matches;
 var lzma = new LZMA("lzma_worker.js");
 var codeMirror;
+var mode = 0;
+var modes = [
+    null,
+    "text/x-java",
+    "text/javascript"
+]
+var highlightMenu;
+$(document).ready(function(e) {
+    rebuildMenu();
+});
+
+function rebuildMenu() {
+    highlightMenu = [{
+            name: 'None',
+            title: 'None',
+            disable: mode == 0,
+            fun: function() {
+                codeMirror.setOption("mode", modes[0]);
+                codeMirror.refresh();
+                mode = 0;
+                rebuildMenu();
+            }
+        },
+        {
+            name: 'Java',
+            title: 'Java',
+            disable: mode == 1,
+            fun: function() {
+                codeMirror.setOption("mode", modes[1]);
+                codeMirror.refresh();
+                mode = 1;
+                rebuildMenu();
+            }
+        },
+        {
+            name: 'JavaScript',
+            title: 'JavaScript',
+            disable: mode == 2,
+            fun: function() {
+                codeMirror.setOption("mode", modes[2]);
+                codeMirror.refresh();
+                mode = 2;
+                rebuildMenu();
+            }
+        }
+    ];
+    $('#langSelect').contextMenu(highlightMenu);
+}
 document.addEventListener('DOMContentLoaded', function() {
     var textArea = document.getElementById("plaintext");
     codeMirror = CodeMirror(function(elt) {
@@ -94,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
         value: "",
         lineNumbers: true,
         matchBrackets: true,
-        mode: "text/x-java",
+        mode: modes[0],
         theme: "darcula",
         indentUnit: 4,
         lineWrapping: true,
@@ -106,6 +159,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (matches = /(?:^|\;)invert\=([01])(?:\;|$)/.exec(document.cookie)) {
         if (matches[1] === '1') {
             document.body.classList.add("invert");
+            codeMirror.setOption("theme", "base16-light");
+            codeMirror.refresh();
         }
     }
 
@@ -124,6 +179,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert("Failed to decompress data: " + error);
                     return;
                 }
+                mode = plaintext.charAt(0);
+                plaintext = plaintext.substr(1);
+                codeMirror.setOption("mode", modes[mode]);
                 codeMirror.setValue(plaintext);
                 codeMirror.refresh();
             });
@@ -133,60 +191,65 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function url_generate(format) {
-  var plaintext;
-  if (!document.getElementById("plaintext")) {
-    plaintext = codeMirror.getValue();
-  } else {
-    plaintext = document.getElementById("plaintext").value;
-  }
-  lzma.compress(plaintext, 1, function(compressed, error){
-    if (error) {
-      alert("Failed to compress data: "+error);
-      return;
+    var plaintext;
+    if (!document.getElementById("plaintext")) {
+        plaintext = codeMirror.getValue();
+    } else {
+        plaintext = document.getElementById("plaintext").value;
     }
+    plaintext = mode + plaintext;
+    lzma.compress(plaintext, 1, function(compressed, error) {
+        if (error) {
+            alert("Failed to compress data: " + error);
+            return;
+        }
 
-    var reader = new FileReader();
-    reader.onload = function(){
-      var base64 = reader.result.substr(reader.result.indexOf(",")+1);
-      var url = "https://"+location.host+location.pathname+"#"+base64;
-      var result;
-      if (format === 'markdown') {
-        result = "[paste]("+url+")";
-      } else {
-        result = url;
-      }
-      text_offer(result);
-    };
-    reader.readAsDataURL(new Blob([new Uint8Array(compressed)]));
-  });
+        var reader = new FileReader();
+        reader.onload = function() {
+            var base64 = reader.result.substr(reader.result.indexOf(",") + 1);
+            var url = "https://" + location.host + location.pathname + "#" + base64;
+            var result;
+            if (format === 'markdown') {
+                result = "[paste](" + url + ")";
+            } else {
+                result = url;
+            }
+            text_offer(result);
+        };
+        reader.readAsDataURL(new Blob([new Uint8Array(compressed)]));
+    });
 }
 
+function select_language() {}
+
 function text_offer(text) {
-  document.getElementById("text-offer-value").value = text;
-  document.getElementById("nav").classList.add("text-offer");
+    document.getElementById("text-offer-value").value = text;
+    document.getElementById("nav").classList.add("text-offer");
 }
 
 function text_offer_copy() {
-  var input = document.getElementById("text-offer-value");
-  input.select();
-  document.execCommand('copy');
-  text_offer_cancel();
+    var input = document.getElementById("text-offer-value");
+    input.select();
+    document.execCommand('copy');
+    text_offer_cancel();
 }
 
 function text_offer_cancel() {
-  document.getElementById("text-offer-value").value = "";
-  document.getElementById("nav").classList.remove("text-offer");
+    document.getElementById("text-offer-value").value = "";
+    document.getElementById("nav").classList.remove("text-offer");
 }
 
 function invert() {
-  var pref = document.body.classList.contains("invert") ? 0 : 1;
-  document.cookie = "invert="+pref+";max-age=63072000";
-  document.body.classList[pref?"add":"remove"]("invert");
+    var pref = document.body.classList.contains("invert") ? 0 : 1;
+    document.cookie = "invert=" + pref + ";max-age=63072000";
+    document.body.classList[pref ? "add" : "remove"]("invert");
+    codeMirror.setOption("theme", pref ? "base16-light" : "darcula");
+    codeMirror.refresh();
 }
 </script>
 </head>
 <body>
 <div id="plaintext-wrapper"><textarea style="height:100%;" id="plaintext" spellcheck="false"></textarea></div>
-<div id="nav"><span class="nav-default"><a class="nav-left" href="https://github.com/topaz/paste">[github]</a><a class="nav-left" onclick="invert()">[invert colors]</a><a onclick="url_generate('raw')">[generate url]</a><a onclick="url_generate('markdown')">[generate markdown link]</a></span><span class="nav-text-offer"><input id="text-offer-value"/><a onclick="text_offer_copy()">[copy]</a><a onclick="text_offer_cancel()">[cancel]</a></span></div>
+<div id="nav"><span class="nav-default"><a class="nav-left" href="https://github.com/ElectronicWizard/paste">[github]</a><a class="nav-left" onclick="invert()">[invert colors]</a><a class="nav_left" id="langSelect" onclick="select_language()">[highlighting]</a><a onclick="url_generate('raw')">[generate url]</a><a onclick="url_generate('markdown')">[generate markdown link]</a></span><span class="nav-text-offer"><input id="text-offer-value"/><a onclick="text_offer_copy()">[copy]</a><a onclick="text_offer_cancel()">[cancel]</a></span></div>
 </body>
 </html>
