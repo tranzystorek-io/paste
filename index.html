@@ -96,89 +96,44 @@ body.invert #nav a:hover {
 var matches;
 var lzma = new LZMA("lzma_worker.js");
 var codeMirror;
-var mode = 0;
+var currentMode = "null";
 var modes = [
-    "null",
-    "text/x-csrc",
-    "text/x-c++src",
-    "text/x-java",
-    "text/javascript",
-    "text/x-python",
-    "text/x-rustsrc",
-    "text/x-haskell",
-    "text/x-fsharp"
+    { name: "None", mimo: "null" },
+    { name: "C", mimo: "text/x-csrc" },
+    { name: "C++", mimo: "text/x-c++src" },
+    { name: "Java", mimo: "text/x-java" },
+    { name: "JavaScript", mimo: "text/javascript" },
+    { name: "Python", mimo: "text/x-python" },
+    { name: "Rust", mimo: "text/x-rustsrc"},
+    { name: "Haskell", mimo: "text/x-haskell" },
+    { name: "F#", mimo: "text/x-fsharp" }
 ]
 var highlightMenu;
 $(document).ready(function(e) {
     rebuildMenu();
 });
 
-function getModeCallback(modeId) {
+function getModeCallback(modeMimo) {
     return function() {
-        mode = modeId;
-        codeMirror.setOption("mode", modes[modeId]);
+        currentMode = modeMimo;
+        codeMirror.setOption("mode", modeMimo);
         codeMirror.refresh();
         rebuildMenu();
     };
 }
 
 function rebuildMenu() {
-    highlightMenu = [
-        {
-            name: 'None',
-            title: 'None',
-            disable: mode == 0,
-            fun: getModeCallback(0)
-        },
-        {
-            name: 'C',
-            title: 'C',
-            disable: mode == 1,
-            fun: getModeCallback(1)
-        },
-        {
-            name: 'C++',
-            title: 'C++',
-            disable: mode == 2,
-            fun: getModeCallback(2)
-        },
-        {
-            name: 'Java',
-            title: 'Java',
-            disable: mode == 3,
-            fun: getModeCallback(3)
-        },
-        {
-            name: 'JavaScript',
-            title: 'JavaScript',
-            disable: mode == 4,
-            fun: getModeCallback(4)
-        },
-        {
-            name: 'Python',
-            title: 'Python',
-            disable: mode == 5,
-            fun: getModeCallback(5)
-        },
-        {
-            name: 'Rust',
-            title: 'Rust',
-            disable: mode == 6,
-            fun: getModeCallback(6)
-        },
-        {
-            name: 'Haskell',
-            title: 'Haskell',
-            disable: mode == 7,
-            fun: getModeCallback(7)
-        },
-        {
-            name: 'F#',
-            title: 'F#',
-            disable: mode == 8,
-            fun: getModeCallback(8)
-        }
-    ];
+    highlightMenu = modes.map(function(mode) {
+        let name = mode.name;
+        let mimo = mode.mimo;
+        return {
+            name: name,
+            title: name,
+            disable: mimo == currentMode,
+            fun: getModeCallback(mimo)
+        };
+    });
+
     $('#langSelect').contextMenu(highlightMenu);
 }
 document.addEventListener('DOMContentLoaded', function() {
@@ -216,15 +171,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var reader = new FileReader();
         reader.onload = function() {
             var compressed_data = Array.from(new Uint8Array(reader.result));
-            lzma.decompress(compressed_data, function(plaintext, error) {
+            lzma.decompress(compressed_data, function(serialized, error) {
                 if (error) {
                     alert("Failed to decompress data: " + error);
                     return;
                 }
-                mode = plaintext.charAt(0);
-                plaintext = plaintext.substr(1);
-                codeMirror.setOption("mode", modes[mode]);
-                codeMirror.setValue(plaintext);
+                var content = JSON.parse(serialized);
+                currentMode = content.lang;
+                codeMirror.setOption("mode", currentMode);
+                codeMirror.setValue(content.content);
                 codeMirror.refresh();
                 rebuildMenu();
             });
@@ -240,8 +195,8 @@ function url_generate(format) {
     } else {
         plaintext = document.getElementById("plaintext").value;
     }
-    plaintext = mode + plaintext;
-    lzma.compress(plaintext, 1, function(compressed, error) {
+    let serialized = JSON.stringify({ lang: currentMode, content: plaintext });
+    lzma.compress(serialized, 1, function(compressed, error) {
         if (error) {
             alert("Failed to compress data: " + error);
             return;
