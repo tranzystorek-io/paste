@@ -98,25 +98,25 @@ var lzma = new LZMA("lzma_worker.js");
 var codeMirror;
 var currentMode = "null";
 var modes = [
-    { name: "None", mimo: "null" },
-    { name: "C", mimo: "text/x-csrc" },
-    { name: "C++", mimo: "text/x-c++src" },
-    { name: "Java", mimo: "text/x-java" },
-    { name: "JavaScript", mimo: "text/javascript" },
-    { name: "Python", mimo: "text/x-python" },
-    { name: "Rust", mimo: "text/x-rustsrc"},
-    { name: "Haskell", mimo: "text/x-haskell" },
-    { name: "F#", mimo: "text/x-fsharp" }
+    { name: "None", mime: "null" },
+    { name: "C", mime: "text/x-csrc" },
+    { name: "C++", mime: "text/x-c++src" },
+    { name: "Java", mime: "text/x-java" },
+    { name: "JavaScript", mime: "text/javascript" },
+    { name: "Python", mime: "text/x-python" },
+    { name: "Rust", mime: "text/x-rustsrc"},
+    { name: "Haskell", mime: "text/x-haskell" },
+    { name: "F#", mime: "text/x-fsharp" }
 ]
 var highlightMenu;
 $(document).ready(function(e) {
     rebuildMenu();
 });
 
-function getModeCallback(modeMimo) {
+function getModeCallback(modeMime) {
     return function() {
-        currentMode = modeMimo;
-        codeMirror.setOption("mode", modeMimo);
+        currentMode = modeMime;
+        codeMirror.setOption("mode", modeMime);
         codeMirror.refresh();
         rebuildMenu();
     };
@@ -125,12 +125,12 @@ function getModeCallback(modeMimo) {
 function rebuildMenu() {
     highlightMenu = modes.map(function(mode) {
         let name = mode.name;
-        let mimo = mode.mimo;
+        let mime = mode.mime;
         return {
             name: name,
             title: name,
-            disable: mimo == currentMode,
-            fun: getModeCallback(mimo)
+            disable: mime == currentMode,
+            fun: getModeCallback(mime)
         };
     });
 
