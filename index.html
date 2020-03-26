@@ -76,65 +76,107 @@ body.invert #nav a:hover {
 #nav.text-offer .nav-text-offer { display:inline; }
 </style>
 <script src="lzma.js"></script>
-<script src="lib/codemirror.js"></script>
-<script src="lib/jquery-3.4.1.min.js"></script>
-<script src="lib/contextMenu.min.js"></script>
-<link rel="stylesheet" href="lib/codemirror.css">
-<link rel="stylesheet" href="theme/darcula.css">
-<link rel="stylesheet" href="theme/midnight.css">
-<link rel="stylesheet" href="theme/night.css">
-<link rel="stylesheet" href="theme/base16-light.css">
-<link rel="stylesheet" href="lib/contextMenu.min.css">
-<script src="mode/clike/clike.js"></script>
-<script src="mode/javascript/javascript.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="contextMenu.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/theme/darcula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/theme/midnight.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/theme/night.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/theme/base16-light.min.css">
+<link rel="stylesheet" href="contextMenu.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/addon/mode/simple.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/rust/rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/haskell/haskell.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/mllike/mllike.min.js"></script>
 <script>
 var matches;
 var lzma = new LZMA("lzma_worker.js");
 var codeMirror;
 var mode = 0;
 var modes = [
-    null,
+    "null",
+    "text/x-csrc",
+    "text/x-c++src",
     "text/x-java",
-    "text/javascript"
+    "text/javascript",
+    "text/x-python",
+    "text/x-rustsrc",
+    "text/x-haskell",
+    "text/x-fsharp"
 ]
 var highlightMenu;
 $(document).ready(function(e) {
     rebuildMenu();
 });
 
+function getModeCallback(modeId) {
+    return function() {
+        mode = modeId;
+        codeMirror.setOption("mode", modes[modeId]);
+        codeMirror.refresh();
+        rebuildMenu();
+    };
+}
+
 function rebuildMenu() {
-    highlightMenu = [{
+    highlightMenu = [
+        {
             name: 'None',
             title: 'None',
             disable: mode == 0,
-            fun: function() {
-                codeMirror.setOption("mode", modes[0]);
-                codeMirror.refresh();
-                mode = 0;
-                rebuildMenu();
-            }
+            fun: getModeCallback(0)
+        },
+        {
+            name: 'C',
+            title: 'C',
+            disable: mode == 1,
+            fun: getModeCallback(1)
+        },
+        {
+            name: 'C++',
+            title: 'C++',
+            disable: mode == 2,
+            fun: getModeCallback(2)
         },
         {
             name: 'Java',
             title: 'Java',
-            disable: mode == 1,
-            fun: function() {
-                codeMirror.setOption("mode", modes[1]);
-                codeMirror.refresh();
-                mode = 1;
-                rebuildMenu();
-            }
+            disable: mode == 3,
+            fun: getModeCallback(3)
         },
         {
             name: 'JavaScript',
             title: 'JavaScript',
-            disable: mode == 2,
-            fun: function() {
-                codeMirror.setOption("mode", modes[2]);
-                codeMirror.refresh();
-                mode = 2;
-                rebuildMenu();
-            }
+            disable: mode == 4,
+            fun: getModeCallback(4)
+        },
+        {
+            name: 'Python',
+            title: 'Python',
+            disable: mode == 5,
+            fun: getModeCallback(5)
+        },
+        {
+            name: 'Rust',
+            title: 'Rust',
+            disable: mode == 6,
+            fun: getModeCallback(6)
+        },
+        {
+            name: 'Haskell',
+            title: 'Haskell',
+            disable: mode == 7,
+            fun: getModeCallback(7)
+        },
+        {
+            name: 'F#',
+            title: 'F#',
+            disable: mode == 8,
+            fun: getModeCallback(8)
         }
     ];
     $('#langSelect').contextMenu(highlightMenu);
@@ -147,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
         value: "",
         lineNumbers: true,
         matchBrackets: true,
-        mode: modes[0],
+        mode: "null",
         theme: "darcula",
         indentUnit: 4,
         lineWrapping: true,
@@ -184,6 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 codeMirror.setOption("mode", modes[mode]);
                 codeMirror.setValue(plaintext);
                 codeMirror.refresh();
+                rebuildMenu();
             });
         };
         reader.readAsArrayBuffer(blob);
