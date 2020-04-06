@@ -125,16 +125,12 @@ function getModeCallback(modeMime) {
 }
 
 function rebuildMenu() {
-    highlightMenu = modes.map(function(mode) {
-        let name = mode.name;
-        let mime = mode.mime;
-        return {
+    highlightMenu = modes.map(({ name, mime }) => ({
             name: name,
             title: name,
             disable: mime == currentMode,
             fun: getModeCallback(mime)
-        };
-    });
+    }));
 
     $('#langSelect').contextMenu(highlightMenu);
 }
