@@ -113,10 +113,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/haskell/haskell.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/mllike/mllike.min.js"></script>
     <script>
-        var matches;
-        var lzma = new LZMA("lzma_worker.js");
-        var codeMirror;
-        var currentMode = "null";
+        var matches
+        var lzma = new LZMA("lzma_worker.js")
+        var codeMirror
+        var currentMode = "null"
         var modes = [
             { name: "None", mime: "null" },
             { name: "C", mime: "text/x-csrc" },
@@ -130,137 +130,144 @@
             { name: "F#", mime: "text/x-fsharp" },
             { name: "OCaml", mime: "text/x-ocaml" }
         ]
-        var highlightMenu;
-        $(document).ready(function (e) {
-            rebuildMenu();
-        });
+        var highlightMenu
+        $(document).ready(e => {
+            rebuildMenu()
+        })
 
         function getModeCallback(modeMime) {
-            return function () {
-                currentMode = modeMime;
-                codeMirror.setOption("mode", modeMime);
-                codeMirror.refresh();
-                rebuildMenu();
-            };
+            return () => {
+                currentMode = modeMime
+                codeMirror.setOption("mode", modeMime)
+                codeMirror.refresh()
+                rebuildMenu()
+            }
         }
 
         function rebuildMenu() {
-            highlightMenu = modes.map(({ name, mime }) => ({
-                name: name,
-                title: name,
-                disable: mime == currentMode,
-                fun: getModeCallback(mime)
-            }));
-
-            $('#langSelect').contextMenu(highlightMenu);
-        }
-        document.addEventListener('DOMContentLoaded', function () {
-            var textArea = document.getElementById("plaintext");
-            codeMirror = CodeMirror(function (elt) {
-                textArea.parentNode.replaceChild(elt, textArea);
-            }, {
-                value: "",
-                lineNumbers: true,
-                matchBrackets: true,
-                mode: "null",
-                theme: "darcula",
-                indentUnit: 4,
-                lineWrapping: true,
-                scrollbarStyle: null
-            });
-            codeMirror.setSize("100%", "100%");
-            codeMirror.getWrapperElement().style["font-size"] = 8 + "px";
-            codeMirror.refresh();
-            if (matches = /(?:^|\;)invert\=([01])(?:\;|$)/.exec(document.cookie)) {
-                if (matches[1] === '1') {
-                    document.body.classList.add("invert");
-                    codeMirror.setOption("theme", "base16-light");
-                    codeMirror.refresh();
+            highlightMenu = modes.map(({ name, mime }) => {
+                return {
+                    name: name,
+                    title: name,
+                    disable: mime == currentMode,
+                    fun: getModeCallback(mime)
                 }
-            }
+            })
 
-            var base64 = location.hash.substr(1);
-            if (base64.length == 0) return;
-            if (!fetch) {
-                alert("Your browser does not support this page.  Sorry! :(");
-                return;
-            }
-            fetch("data:application/octet-stream;base64," + base64).then(r => r.blob()).then(function (blob) {
-                var reader = new FileReader();
-                reader.onload = function () {
-                    var compressed_data = Array.from(new Uint8Array(reader.result));
-                    lzma.decompress(compressed_data, function (serialized, error) {
-                        if (error) {
-                            alert("Failed to decompress data: " + error);
-                            return;
+            $('#langSelect').contextMenu(highlightMenu)
+        }
+        document.addEventListener('DOMContentLoaded',
+            () => {
+                var textArea = document.getElementById("plaintext")
+                codeMirror = CodeMirror(elt => {
+                    textArea.parentNode.replaceChild(elt, textArea)
+                }, {
+                    value: "",
+                    lineNumbers: true,
+                    matchBrackets: true,
+                    mode: "null",
+                    theme: "darcula",
+                    indentUnit: 4,
+                    lineWrapping: true,
+                    scrollbarStyle: null
+                })
+                codeMirror.setSize("100%", "100%")
+                codeMirror.getWrapperElement().style["font-size"] = 8 + "px"
+                codeMirror.refresh();
+                if (matches = /(?:^|\;)invert\=([01])(?:\;|$)/.exec(document.cookie)) {
+                    if (matches[1] === '1') {
+                        document.body.classList.add("invert")
+                        codeMirror.setOption("theme", "base16-light")
+                        codeMirror.refresh()
+                    }
+                }
+
+                var base64 = location.hash.substr(1)
+                if (base64.length == 0) return
+                if (!fetch) {
+                    alert("Your browser does not support this page.  Sorry! :(")
+                    return
+                }
+                fetch("data:application/octet-stream;base64," + base64)
+                    .then(r => r.blob())
+                    .then(blob => {
+                        var reader = new FileReader()
+                        reader.onload = () => {
+                            var compressed_data = Array.from(new Uint8Array(reader.result))
+                            lzma.decompress(compressed_data,
+                                (serialized, error) => {
+                                    if (error) {
+                                        alert("Failed to decompress data: " + error)
+                                        return
+                                    }
+                                    const { lang, content } = JSON.parse(serialized)
+                                    currentMode = lang
+                                    codeMirror.setOption("mode", currentMode)
+                                    codeMirror.setValue(content)
+                                    codeMirror.refresh()
+                                    rebuildMenu()
+                                })
                         }
-                        var content = JSON.parse(serialized);
-                        currentMode = content.lang;
-                        codeMirror.setOption("mode", currentMode);
-                        codeMirror.setValue(content.content);
-                        codeMirror.refresh();
-                        rebuildMenu();
-                    });
-                };
-                reader.readAsArrayBuffer(blob);
-            });
-        });
+                        reader.readAsArrayBuffer(blob)
+                    })
+            })
 
         function url_generate(format) {
-            var plaintext;
+            var plaintext
             if (!document.getElementById("plaintext")) {
-                plaintext = codeMirror.getValue();
+                plaintext = codeMirror.getValue()
             } else {
-                plaintext = document.getElementById("plaintext").value;
+                plaintext = document.getElementById("plaintext").value
             }
-            let serialized = JSON.stringify({ lang: currentMode, content: plaintext });
-            lzma.compress(serialized, 1, function (compressed, error) {
-                if (error) {
-                    alert("Failed to compress data: " + error);
-                    return;
-                }
-
-                var reader = new FileReader();
-                reader.onload = function () {
-                    var base64 = reader.result.substr(reader.result.indexOf(",") + 1);
-                    var url = "https://" + location.host + location.pathname + "#" + base64;
-                    var result;
-                    if (format === 'markdown') {
-                        result = "[paste](" + url + ")";
-                    } else {
-                        result = url;
+            let serialized = JSON.stringify({ lang: currentMode, content: plaintext })
+            lzma.compress(serialized, 1,
+                (compressed, error) => {
+                    if (error) {
+                        alert("Failed to compress data: " + error)
+                        return
                     }
-                    text_offer(result);
-                };
-                reader.readAsDataURL(new Blob([new Uint8Array(compressed)]));
-            });
+
+                    var reader = new FileReader();
+                    reader.onload = () => {
+                        var base64 = reader.result.substr(reader.result.indexOf(",") + 1)
+                        var url = "https://" + location.host + location.pathname + "#" + base64
+                        var result
+                        if (format === 'markdown') {
+                            result = "[paste](" + url + ")"
+                        } else {
+                            result = url
+                        }
+                        text_offer(result)
+                    };
+                    reader.readAsDataURL(new Blob([new Uint8Array(compressed)]))
+                });
         }
 
         function select_language() { }
 
         function text_offer(text) {
-            document.getElementById("text-offer-value").value = text;
-            document.getElementById("nav").classList.add("text-offer");
+            document.getElementById("text-offer-value").value = text
+            document.getElementById("nav").classList.add("text-offer")
         }
 
         function text_offer_copy() {
-            var input = document.getElementById("text-offer-value");
-            input.select();
-            document.execCommand('copy');
-            text_offer_cancel();
+            var input = document.getElementById("text-offer-value")
+            input.select()
+            document.execCommand('copy')
+            text_offer_cancel()
         }
 
         function text_offer_cancel() {
-            document.getElementById("text-offer-value").value = "";
-            document.getElementById("nav").classList.remove("text-offer");
+            document.getElementById("text-offer-value").value = ""
+            document.getElementById("nav").classList.remove("text-offer")
         }
 
         function invert() {
-            var pref = document.body.classList.contains("invert") ? 0 : 1;
-            document.cookie = "invert=" + pref + ";max-age=63072000";
-            document.body.classList[pref ? "add" : "remove"]("invert");
-            codeMirror.setOption("theme", pref ? "base16-light" : "darcula");
-            codeMirror.refresh();
+            var pref = document.body.classList.contains("invert") ? 0 : 1
+            document.cookie = "invert=" + pref + ";max-age=63072000"
+            document.body.classList[pref ? "add" : "remove"]("invert")
+            codeMirror.setOption("theme", pref ? "base16-light" : "darcula")
+            codeMirror.refresh()
         }
     </script>
 </head>
