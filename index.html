@@ -113,11 +113,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/haskell/haskell.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/mllike/mllike.min.js"></script>
     <script>
-        var matches
-        var lzma = new LZMA("lzma_worker.js")
-        var codeMirror
-        var currentMode = "null"
-        var modes = [
+        let matches
+        let codeMirror
+        let currentMode = "null"
+        let highlightMenu
+        const lzma = new LZMA("lzma_worker.js")
+        const modes = [
             { name: "None", mime: "null" },
             { name: "C", mime: "text/x-csrc" },
             { name: "C++", mime: "text/x-c++src" },
@@ -130,10 +131,8 @@
             { name: "F#", mime: "text/x-fsharp" },
             { name: "OCaml", mime: "text/x-ocaml" }
         ]
-        var highlightMenu
-        $(document).ready(e => {
-            rebuildMenu()
-        })
+
+        $(document).ready(e => rebuildMenu())
 
         function getModeCallback(modeMime) {
             return () => {
@@ -145,23 +144,19 @@
         }
 
         function rebuildMenu() {
-            highlightMenu = modes.map(({ name, mime }) => {
-                return {
-                    name: name,
-                    title: name,
-                    disable: mime == currentMode,
-                    fun: getModeCallback(mime)
-                }
-            })
+            highlightMenu = modes.map(({ name, mime }) => ({
+                name: name,
+                title: name,
+                disable: mime == currentMode,
+                fun: getModeCallback(mime)
+            }))
 
             $('#langSelect').contextMenu(highlightMenu)
         }
         document.addEventListener('DOMContentLoaded',
             () => {
-                var textArea = document.getElementById("plaintext")
-                codeMirror = CodeMirror(elt => {
-                    textArea.parentNode.replaceChild(elt, textArea)
-                }, {
+                const textArea = document.getElementById("plaintext")
+                const codeMirrorConfig = {
                     value: "",
                     lineNumbers: true,
                     matchBrackets: true,
@@ -170,7 +165,8 @@
                     indentUnit: 4,
                     lineWrapping: true,
                     scrollbarStyle: null
-                })
+                }
+                codeMirror = CodeMirror(elt => textArea.parentNode.replaceChild(elt, textArea), codeMirrorConfig)
                 codeMirror.setSize("100%", "100%")
                 codeMirror.getWrapperElement().style["font-size"] = 8 + "px"
                 codeMirror.refresh();
@@ -182,24 +178,29 @@
                     }
                 }
 
-                var base64 = location.hash.substr(1)
-                if (base64.length == 0) return
+                const base64 = location.hash.substr(1)
+                if (base64.length == 0) {
+                    return
+                }
+
                 if (!fetch) {
                     alert("Your browser does not support this page.  Sorry! :(")
                     return
                 }
+
                 fetch("data:application/octet-stream;base64," + base64)
                     .then(r => r.blob())
                     .then(blob => {
-                        var reader = new FileReader()
+                        const reader = new FileReader()
                         reader.onload = () => {
-                            var compressed_data = Array.from(new Uint8Array(reader.result))
+                            const compressed_data = Array.from(new Uint8Array(reader.result))
                             lzma.decompress(compressed_data,
                                 (serialized, error) => {
                                     if (error) {
                                         alert("Failed to decompress data: " + error)
                                         return
                                     }
+
                                     const { lang, content } = JSON.parse(serialized)
                                     currentMode = lang
                                     codeMirror.setOption("mode", currentMode)
@@ -213,13 +214,9 @@
             })
 
         function url_generate(format) {
-            var plaintext
-            if (!document.getElementById("plaintext")) {
-                plaintext = codeMirror.getValue()
-            } else {
-                plaintext = document.getElementById("plaintext").value
-            }
-            let serialized = JSON.stringify({ lang: currentMode, content: plaintext })
+            const textArea = document.getElementById("plaintext")
+            const plaintext = textArea ? textArea.value : codeMirror.getValue()
+            const serialized = JSON.stringify({ lang: currentMode, content: plaintext })
             lzma.compress(serialized, 1,
                 (compressed, error) => {
                     if (error) {
@@ -227,16 +224,11 @@
                         return
                     }
 
-                    var reader = new FileReader();
+                    const reader = new FileReader();
                     reader.onload = () => {
-                        var base64 = reader.result.substr(reader.result.indexOf(",") + 1)
-                        var url = "https://" + location.host + location.pathname + "#" + base64
-                        var result
-                        if (format === 'markdown') {
-                            result = "[paste](" + url + ")"
-                        } else {
-                            result = url
-                        }
+                        const base64 = reader.result.substr(reader.result.indexOf(",") + 1)
+                        const url = `https://${location.host}${location.pathname}#${base64}`
+                        const result = format === 'markdown' ? `[paste](${url})` : url
                         text_offer(result)
                     };
                     reader.readAsDataURL(new Blob([new Uint8Array(compressed)]))
@@ -251,7 +243,7 @@
         }
 
         function text_offer_copy() {
-            var input = document.getElementById("text-offer-value")
+            const input = document.getElementById("text-offer-value")
             input.select()
             document.execCommand('copy')
             text_offer_cancel()
@@ -263,8 +255,8 @@
         }
 
         function invert() {
-            var pref = document.body.classList.contains("invert") ? 0 : 1
-            document.cookie = "invert=" + pref + ";max-age=63072000"
+            const pref = document.body.classList.contains("invert") ? 0 : 1
+            document.cookie = `invert=${pref};max-age=63072000`
             document.body.classList[pref ? "add" : "remove"]("invert")
             codeMirror.setOption("theme", pref ? "base16-light" : "darcula")
             codeMirror.refresh()
